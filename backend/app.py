@@ -54,9 +54,7 @@ def compute(req: ComputeRequest):
         return convert_range(cities[0], cities[1], start_dt, end_dt)
 
     if len(cities) >= 2 and not has_end:
-        data = convert_all(cities[0], start_dt)
-        # ...existing N_AT_POINT code...
-        # (unchanged)
+        return convert_all(cities[0], start_dt)
 
     if len(cities) >= 2 and has_end:
         end_date_str = req.end_date or req.date          # <-- NEW
