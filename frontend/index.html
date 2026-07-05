@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>WhenWhere</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:24px;max-width:900px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    select,input,button{padding:8px;font-size:14px}
+    .chip{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #ddd;margin:4px}
+    .eq{font-family:ui-monospace,Consolas,monospace;white-space:nowrap;overflow:auto}
+    .bar{height:16px;background:#eee;border-radius:8px;position:relative;margin:6px 0}
+    .bar > .seg{position:absolute;top:0;bottom:0;border-radius:8px}
+    .seg.good{background:#8fd18f}
+    .seg.either{background:#ffd7d7}
+    /* add: toggle switch styles */
+    .switch{position:relative;display:inline-block;width:40px;height:20px}
+    .switch input{display:none}
+    .slider{position:absolute;cursor:pointer;inset:0;background:#ccc;transition:.2s;border-radius:20px}
+    .slider:before{content:"";position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:#fff;transition:.2s;border-radius:50%}
+    .switch input:checked + .slider{background:#22c55e}
+    .switch input:checked + .slider:before{transform:translateX(20px)}
+
+  </style>
+</head>
+<body>
+  <h1>WhenWhere</h1>
+
+  <div class="row" id="cityRow">
+    <div id="cityList" class="row" style="gap:10px;"></div>
+    <button id="addCity">Add city</button>
+    <a id="removeCity" href="javascript:void(0)" style="margin-left:8px;text-decoration:underline;color:#333">remove city</a>
+  </div>
+
+  <div class="row">
+    <input type="date" id="dateInput" />
+    <select id="hour"></select>
+    <select id="minute"></select>
+
+    <span id="endWrap" style="display:none">
+        <input type="date" id="endDate" />
+        <select id="endHour"></select>
+        <select id="endMinute"></select>
+    </span>
+
+    <button id="run">Compute</button>
+
+    <label class="switch" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px">
+        <input type="checkbox" id="rangeToggle" />
+        <span class="slider"></span>
+    </label>
+    <span id="rangeLabel" style="font-size:14px">Range</span>
+  </div>
+
+  <div id="out"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+ 
