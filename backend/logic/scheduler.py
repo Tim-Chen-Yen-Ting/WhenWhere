@@ -137,8 +137,8 @@ def overlap_same_local(cities: List[str], start_dt_local: datetime, end_dt_local
     if end_dt_local < start_dt_local:
         end_dt_local = end_dt_local + timedelta(days=1)
 
-    # 1) Build each city's local endpoints on the chosen wall times
-    #    We only need the local clock hours/minutes; dates can differ by zone when mapped to UTC
+    # Build each city's local endpoints on the chosen wall times
+    # We only need the local clock hours/minutes; dates can differ by zone when mapped to UTC
     local_pairs = []
     for c in cities:
         tz = CITY_TZ[resolve_city(c)]
@@ -147,65 +147,27 @@ def overlap_same_local(cities: List[str], start_dt_local: datetime, end_dt_local
         e_local = tz.localize(end_dt_local.replace(tzinfo=None))
         local_pairs.append((c, s_local, e_local))
 
-    # 2) Linear scan on UTC to find intersection
-    #    Use finest window limits across cities
+    # The intersection of N intervals is exact and always a single contiguous
+    # interval (or empty): the latest start, and the earliest end. No scanning needed.
     utc_min = max(s.astimezone(pytz.UTC) for _, s, _ in local_pairs)
     utc_max = min(e.astimezone(pytz.UTC) for _, _, e in local_pairs)
-    # if naive wrap-around was intended (e.g. 17:00->03:00), adjust by day until s<=e for each city already handled above
 
-    step = timedelta(minutes=step_minutes)
-    cursor = utc_min
-    blocks = []
-    in_block = False
-    b_start = None
-
-    def all_inside(utc_dt: datetime) -> bool:
-        for _, s_loc, e_loc in local_pairs:
-            s_utc = s_loc.astimezone(pytz.UTC)
-            e_utc = e_loc.astimezone(pytz.UTC)
-            if e_utc < s_utc:
-                e_utc += timedelta(days=1)
-            if not (s_utc <= utc_dt < e_utc):
-                return False
-        return True
-
-    # Expand search window a bit (use full envelope to be safe)
-    envelope_start = min(s.astimezone(pytz.UTC) for _, s, _ in local_pairs)
-    envelope_end   = max(e.astimezone(pytz.UTC) for _, _, e in local_pairs)
-    cursor = envelope_start
-
-    while cursor < envelope_end:
-        ok = all_inside(cursor)
-        if ok and not in_block:
-            in_block = True
-            b_start = cursor
-        if (not ok or cursor + step >= envelope_end) and in_block:
-            b_end = envelope_end if (cursor + step >= envelope_end and ok) else cursor
-            if b_end > b_start:
-                blocks.append((b_start, b_end))
-            in_block = False
-            b_start = None
-        cursor += step
-
-    if not blocks:
+    if utc_max <= utc_min:
         return {"type": "N_SAME_LOCAL", "per_city": _per_city_same_local(cities, start_dt_local, end_dt_local), "overlap": None}
 
-    # Map each block back to local per city, for When2Meet-style bar rendering
-    rendered = []
-    for s_utc, e_utc in blocks:
-        segment = {
-            "utcStart": s_utc.strftime("%Y-%m-%dT%H:%M"),
-            "utcEnd":   e_utc.strftime("%Y-%m-%dT%H:%M"),
-            "local": []
-        }
-        for c in cities:
-            tz = CITY_TZ[resolve_city(c)]
-            segment["local"].append({
+    # Map the block back to local per city, for When2Meet-style bar rendering
+    rendered = [{
+        "utcStart": utc_min.strftime("%Y-%m-%dT%H:%M"),
+        "utcEnd":   utc_max.strftime("%Y-%m-%dT%H:%M"),
+        "local": [
+            {
                 "city": resolve_city(c),
-                "start": s_utc.astimezone(tz).strftime("%Y-%m-%dT%H:%M"),
-                "end":   e_utc.astimezone(tz).strftime("%Y-%m-%dT%H:%M")
-            })
-        rendered.append(segment)
+                "start": utc_min.astimezone(CITY_TZ[resolve_city(c)]).strftime("%Y-%m-%dT%H:%M"),
+                "end":   utc_max.astimezone(CITY_TZ[resolve_city(c)]).strftime("%Y-%m-%dT%H:%M"),
+            }
+            for c in cities
+        ]
+    }]
 
     return {
         "type": "N_SAME_LOCAL",
