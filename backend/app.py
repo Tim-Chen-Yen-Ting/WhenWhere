@@ -1,6 +1,8 @@
 # backend/app.py
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from backend.logic.scheduler import (
@@ -28,10 +30,6 @@ class ComputeRequest(BaseModel):
     end_hour: Optional[int] = Field(None, ge=0, le=23)
     end_minute: Optional[int] = Field(None, ge=0, le=59)
     step_minutes: int = 30
-
-@app.get("/")
-def root():
-    return {"message": "WhenWhere backend running"}
 
 @app.post("/compute")
 def compute(req: ComputeRequest):
@@ -63,3 +61,5 @@ def compute(req: ComputeRequest):
 
     return {"error": "Unhandled combination"}
 
+FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

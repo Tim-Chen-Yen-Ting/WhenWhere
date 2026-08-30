@@ -1,8 +1,7 @@
 // replace (from the line `// --- City dropdown (searchable by built-in browser typing) ---`
 // down through the entire `loadCities()` function body)
-const API = "http://127.0.0.1:8000/compute";
 let cities = [];
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = window.location.origin;
 
 // --- City dropdowns (multiple selects in a row) ---
 let activeSelect = null; // track which select is "current" for removal
