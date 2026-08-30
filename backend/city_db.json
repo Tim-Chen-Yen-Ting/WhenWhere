@@ -2128,6 +2128,14 @@
     "lon":66.8
   },
   {
+    "city":"San Francisco",
+    "country":"United States",
+    "country_code":"US",
+    "timezone":"America/Los_Angeles",
+    "lat":37.7749,
+    "lon":-122.4194
+  },
+  {
     "city":"San Juan",
     "country":"Argentina",
     "country_code":"AR",
