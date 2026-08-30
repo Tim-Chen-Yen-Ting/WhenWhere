@@ -1,9 +1,9 @@
-"""
-cd E:\WhenWhere\frontend
+r"""
+cd D:\WhenWhere\frontend
 python -m http.server 3000
 
 
-cd E:\WhenWhere
+cd D:\WhenWhere
 .\venv\Scripts\Activate.ps1
 uvicorn backend.app:app --reload
 """
