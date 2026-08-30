@@ -3,3 +3,4 @@ uvicorn
 pydantic
 python-dateutil
 pytz
+pytest
