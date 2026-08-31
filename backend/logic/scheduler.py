@@ -137,20 +137,35 @@ def overlap_same_local(cities: List[str], start_dt_local: datetime, end_dt_local
     if end_dt_local < start_dt_local:
         end_dt_local = end_dt_local + timedelta(days=1)
 
-    # Build each city's local endpoints on the chosen wall times
-    # We only need the local clock hours/minutes; dates can differ by zone when mapped to UTC
-    local_pairs = []
-    for c in cities:
-        tz = CITY_TZ[resolve_city(c)]
-        # reconstruct wall times on the same calendar date as start_dt_local in that city
-        s_local = tz.localize(start_dt_local.replace(tzinfo=None))
-        e_local = tz.localize(end_dt_local.replace(tzinfo=None))
-        local_pairs.append((c, s_local, e_local))
+    def window_utc(tz, day_offset: int):
+        s = tz.localize((start_dt_local + timedelta(days=day_offset)).replace(tzinfo=None))
+        e = tz.localize((end_dt_local + timedelta(days=day_offset)).replace(tzinfo=None))
+        return s.astimezone(pytz.UTC), e.astimezone(pytz.UTC)
 
-    # The intersection of N intervals is exact and always a single contiguous
-    # interval (or empty): the latest start, and the earliest end. No scanning needed.
-    utc_min = max(s.astimezone(pytz.UTC) for _, s, _ in local_pairs)
-    utc_max = min(e.astimezone(pytz.UTC) for _, _, e in local_pairs)
+    # "Everyone wants the same wall-clock window every day" is a recurring
+    # daily pattern, not a one-off date -- so the true overlap can fall on
+    # adjacent calendar dates for cities far apart in offset. E.g. Los
+    # Angeles and Taipei are 15h apart: LA's "today" 08:00-20:00 lines up
+    # with Taipei's "tomorrow" 08:00-20:00, not Taipei's "today" (which ends
+    # hours before LA's even starts). Anchor to the first city's window on
+    # the literal date given, then for every other city check its window on
+    # the day before/of/after that date (in ITS OWN local calendar) and keep
+    # whichever instantiation actually overlaps -- +/-1 day comfortably
+    # covers the full spread of real-world UTC offsets (about -12 to +14).
+    tz0 = CITY_TZ[resolve_city(cities[0])]
+    utc_min, utc_max = window_utc(tz0, 0)
+
+    for c in cities[1:]:
+        tz = CITY_TZ[resolve_city(c)]
+        best = None
+        for day_offset in (-1, 0, 1):
+            s_utc, e_utc = window_utc(tz, day_offset)
+            lo, hi = max(utc_min, s_utc), min(utc_max, e_utc)
+            if hi > lo and (best is None or (hi - lo) > (best[1] - best[0])):
+                best = (lo, hi)
+        if best is None:
+            return {"type": "N_SAME_LOCAL", "per_city": _per_city_same_local(cities, start_dt_local, end_dt_local), "overlap": None}
+        utc_min, utc_max = best
 
     if utc_max <= utc_min:
         return {"type": "N_SAME_LOCAL", "per_city": _per_city_same_local(cities, start_dt_local, end_dt_local), "overlap": None}

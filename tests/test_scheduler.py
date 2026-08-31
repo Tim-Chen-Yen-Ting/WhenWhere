@@ -60,14 +60,34 @@ def test_overlap_same_local_exact_intersection():
 
 
 def test_overlap_same_local_no_overlap():
-    # Taipei and Los Angeles are ~15 hours apart, so 09:00-18:00 local
-    # windows for both never coincide.
+    # Taipei and Los Angeles are ~15 hours apart, so a 9-hour 09:00-18:00
+    # local window for both never coincides on any day pairing.
     r = overlap_same_local(
         ["Taipei", "Los Angeles"],
         datetime(2026, 8, 30, 9, 0),
         datetime(2026, 8, 30, 18, 0),
     )
     assert r["overlap"] is None
+
+
+def test_overlap_same_local_finds_adjacent_day_match():
+    # Los Angeles and Taipei are ~15 hours apart, wider than a same-date
+    # 08:00-20:00 (12h) window can bridge -- but the "same local window" is
+    # a RECURRING daily pattern, not a one-off date, so LA's window on the
+    # given date actually lines up with Taipei's window on the NEXT day
+    # (in Taipei's own local calendar), not the same date. The overlap must
+    # be found there, not missed just because it's not on the literal date.
+    r = overlap_same_local(
+        ["Los Angeles", "Taipei"],
+        datetime(2026, 8, 30, 8, 0),
+        datetime(2026, 8, 30, 20, 0),
+    )
+    assert r["overlap"] is not None
+    local = {row["city"]: row for row in r["overlap"][0]["local"]}
+    assert local["Los Angeles"]["start"] == "2026-08-30T17:00"
+    assert local["Los Angeles"]["end"] == "2026-08-30T20:00"
+    assert local["Taipei"]["start"] == "2026-08-31T08:00"
+    assert local["Taipei"]["end"] == "2026-08-31T11:00"
 
 
 def test_overlap_same_local_preserves_minute_precision():

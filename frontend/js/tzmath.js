@@ -70,26 +70,45 @@
   function pad2(n) { return String(n).padStart(2, "0"); }
   function labelParts(p) { return `${p.year}-${pad2(p.month)}-${pad2(p.day)}T${pad2(p.hour)}:${pad2(p.minute)}`; }
 
+  function shiftDate(date, days) {
+    const d = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+    return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+  }
+
   // Exact N-city "same local window" overlap -- the intersection of N intervals
   // is always a single contiguous interval or empty: max(starts), min(ends).
   // cities: [{city, timezone}], anchorDate: {year, month, day} (the calendar date
   // the start wall-time is on), startWall/endWall: {hour, minute}.
+  //
+  // "Everyone wants the same wall-clock window every day" is a recurring
+  // daily pattern, not a one-off date -- so the true overlap can fall on
+  // adjacent calendar dates for cities far apart in offset. E.g. Los Angeles
+  // and Taipei are ~15h apart: LA's window on the given date lines up with
+  // Taipei's window on the NEXT day (in Taipei's own local calendar), not
+  // Taipei's window on the same date (which ends hours before LA's even
+  // starts). Anchor to the first city's window on the literal date given,
+  // then for every other city check its window on the day before/of/after
+  // that date and keep whichever instantiation actually overlaps -- +/-1
+  // day comfortably covers the full spread of real-world UTC offsets
+  // (about -12 to +14). Mirrors overlap_same_local in scheduler.py.
   function overlapSameLocal(cities, anchorDate, startWall, endWall) {
     const startMinutes = startWall.hour * 60 + startWall.minute;
     const endMinutes = endWall.hour * 60 + endWall.minute;
+    const overnightWrap = endMinutes < startMinutes ? 1 : 0;
 
-    let endDate = anchorDate;
-    if (endMinutes < startMinutes) {
-      const next = new Date(Date.UTC(anchorDate.year, anchorDate.month - 1, anchorDate.day + 1));
-      endDate = { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate() };
+    function windowUtc(timeZone, dayOffset) {
+      const s = shiftDate(anchorDate, dayOffset);
+      const e = shiftDate(anchorDate, dayOffset + overnightWrap);
+      return {
+        sUtc: zonedWallTimeToUtc(timeZone, s.year, s.month, s.day, startWall.hour, startWall.minute),
+        eUtc: zonedWallTimeToUtc(timeZone, e.year, e.month, e.day, endWall.hour, endWall.minute),
+      };
     }
 
-    const localPairs = cities.map((c) => ({
-      city: c.city,
-      timezone: c.timezone,
-      sUtc: zonedWallTimeToUtc(c.timezone, anchorDate.year, anchorDate.month, anchorDate.day, startWall.hour, startWall.minute),
-      eUtc: zonedWallTimeToUtc(c.timezone, endDate.year, endDate.month, endDate.day, endWall.hour, endWall.minute),
-    }));
+    const localPairs = cities.map((c) => {
+      const w = windowUtc(c.timezone, 0);
+      return { city: c.city, timezone: c.timezone, sUtc: w.sUtc, eUtc: w.eUtc };
+    });
 
     const perCity = localPairs.map((p) => ({
       city: p.city,
@@ -97,20 +116,38 @@
       end: partsAt(p.timezone, p.eUtc),
     }));
 
-    const utcMin = new Date(Math.max(...localPairs.map((p) => p.sUtc.getTime())));
-    const utcMax = new Date(Math.min(...localPairs.map((p) => p.eUtc.getTime())));
+    let utcMin = localPairs[0].sUtc;
+    let utcMax = localPairs[0].eUtc;
+
+    for (let i = 1; i < cities.length; i++) {
+      const c = cities[i];
+      let best = null;
+      for (const dayOffset of [-1, 0, 1]) {
+        const w = windowUtc(c.timezone, dayOffset);
+        const lo = Math.max(utcMin.getTime(), w.sUtc.getTime());
+        const hi = Math.min(utcMax.getTime(), w.eUtc.getTime());
+        if (hi > lo && (!best || hi - lo > best.hi - best.lo)) {
+          best = { lo, hi };
+        }
+      }
+      if (!best) {
+        return { overlap: null, perCity };
+      }
+      utcMin = new Date(best.lo);
+      utcMax = new Date(best.hi);
+    }
 
     if (utcMax <= utcMin) {
       return { overlap: null, perCity };
     }
 
-    const local = localPairs.map((p) => {
-      const offStart = offsetMinutesAt(p.timezone, utcMin);
-      const offEnd = offsetMinutesAt(p.timezone, utcMax);
+    const local = cities.map((c) => {
+      const offStart = offsetMinutesAt(c.timezone, utcMin);
+      const offEnd = offsetMinutesAt(c.timezone, utcMax);
       return {
-        city: p.city,
-        start: partsAt(p.timezone, utcMin),
-        end: partsAt(p.timezone, utcMax),
+        city: c.city,
+        start: partsAt(c.timezone, utcMin),
+        end: partsAt(c.timezone, utcMax),
         utcOffsetStart: utcOffsetLabel(offStart),
         utcOffsetEnd: utcOffsetLabel(offEnd),
       };
@@ -123,21 +160,25 @@
   }
 
   // Quick "would adding this city still leave a non-empty overlap" check,
-  // for the map's live compatibility-preview coloring. Cheap: 1 extra
-  // interval intersected against the already-computed [utcMin, utcMax].
+  // for the map's live compatibility-preview coloring. Same adjacent-day
+  // reasoning as overlapSameLocal above -- checks day -1/0/+1 too, not just
+  // the literal anchor date, or a far-offset city would be marked
+  // incompatible even when its actual (adjacent-day) window does overlap.
   function stillOverlaps(utcMin, utcMax, timeZone, anchorDate, startWall, endWall) {
-    const endMinutes = endWall.hour * 60 + endWall.minute;
     const startMinutes = startWall.hour * 60 + startWall.minute;
-    let endDate = anchorDate;
-    if (endMinutes < startMinutes) {
-      const next = new Date(Date.UTC(anchorDate.year, anchorDate.month - 1, anchorDate.day + 1));
-      endDate = { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate() };
+    const endMinutes = endWall.hour * 60 + endWall.minute;
+    const overnightWrap = endMinutes < startMinutes ? 1 : 0;
+
+    for (const dayOffset of [-1, 0, 1]) {
+      const s = shiftDate(anchorDate, dayOffset);
+      const e = shiftDate(anchorDate, dayOffset + overnightWrap);
+      const sUtc = zonedWallTimeToUtc(timeZone, s.year, s.month, s.day, startWall.hour, startWall.minute);
+      const eUtc = zonedWallTimeToUtc(timeZone, e.year, e.month, e.day, endWall.hour, endWall.minute);
+      const lo = Math.max(sUtc.getTime(), utcMin.getTime());
+      const hi = Math.min(eUtc.getTime(), utcMax.getTime());
+      if (hi > lo) return true;
     }
-    const sUtc = zonedWallTimeToUtc(timeZone, anchorDate.year, anchorDate.month, anchorDate.day, startWall.hour, startWall.minute);
-    const eUtc = zonedWallTimeToUtc(timeZone, endDate.year, endDate.month, endDate.day, endWall.hour, endWall.minute);
-    const lo = Math.max(sUtc.getTime(), utcMin.getTime());
-    const hi = Math.min(eUtc.getTime(), utcMax.getTime());
-    return hi > lo;
+    return false;
   }
 
   const tzmath = {
