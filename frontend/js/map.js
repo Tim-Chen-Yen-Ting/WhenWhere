@@ -58,30 +58,84 @@
   // longitude). Leaflet's plain lat/lng-to-pixel rendering has no wrapping
   // awareness, so an unsplit ring draws a straight edge connecting e.g.
   // lon=179.9 to lon=-179.9, which renders as a spurious band clear across
-  // the map. Split each ring wherever it jumps >180deg in longitude and
-  // reclose each resulting piece on its own; a no-op for the ~180 countries
-  // that never cross the antimeridian.
+  // the map.
+  //
+  // Fix: whenever consecutive ring points jump >180deg in longitude,
+  // interpolate the latitude at which the ring actually crosses +/-180 and
+  // insert boundary points there, splitting the ring at that exact point.
+  // A ring crossing the antimeridian twice (out and back -- Russia's
+  // mainland does this near Chukotka) produces pieces that each end up with
+  // BOTH endpoints sitting on a meridian, closeable with a straight
+  // vertical-ish edge along that meridian, which is geometrically correct.
+  // A ring is cyclic, so its own start/end point is arbitrary (not
+  // necessarily at a crossing) -- the first and last raw pieces are really
+  // one continuous piece split only by array indexing, and must be merged
+  // back together before closing.
+  //
+  // This assumes a "normal" mid-latitude crossing. Antarctica's ring wraps
+  // around the POLE, not just across the antimeridian -- that's a different
+  // topology this closure doesn't handle, and forcing it through the same
+  // logic produces a still-degenerate ring spanning the full 360deg. Rather
+  // than risk a worse shape than the (apparently visually fine, since it
+  // was never reported as broken) original, bail out to the untouched ring
+  // whenever a result still spans most of the globe.
+  function bboxLonSpan(ring) {
+    let min = Infinity, max = -Infinity;
+    for (const [lon] of ring) { if (lon < min) min = lon; if (lon > max) max = lon; }
+    return max - min;
+  }
+
   function splitRingAtAntimeridian(ring) {
     const segments = [];
     let current = [ring[0]];
     let didSplit = false;
+
     for (let i = 1; i < ring.length; i++) {
-      if (Math.abs(ring[i][0] - ring[i - 1][0]) > 180) {
+      const [lon1, lat1] = ring[i - 1];
+      const [lon2, lat2] = ring[i];
+      const dLon = lon2 - lon1;
+
+      if (Math.abs(dLon) > 180) {
         didSplit = true;
+        const unwrappedDLon = dLon > 0 ? dLon - 360 : dLon + 360;
+        const nearBoundary = dLon > 0 ? -180 : 180; // meridian this edge exits through
+        const farBoundary = dLon > 0 ? 180 : -180;  // meridian the next piece re-enters through
+        const t = (nearBoundary - lon1) / unwrappedDLon;
+        let crossLat = lat1 + t * (lat2 - lat1);
+        // Degenerate case: a raw point already sits almost exactly on the
+        // meridian, making this a 0/0 division. Fall back to that point's
+        // own latitude rather than propagate a NaN coordinate into Leaflet.
+        if (!Number.isFinite(crossLat)) crossLat = lat1;
+
+        current.push([nearBoundary, crossLat]);
         segments.push(current);
-        current = [];
+        current = [[farBoundary, crossLat]];
       }
-      current.push(ring[i]);
+      current.push([lon2, lat2]);
     }
     segments.push(current);
     if (!didSplit) return [ring];
-    return segments
+
+    const first = segments[0];
+    const last = segments[segments.length - 1];
+    const startsAtCrossing = Math.abs(ring[0][0]) === 180;
+    if (!startsAtCrossing && segments.length > 1) {
+      segments[0] = last.concat(first.slice(1));
+      segments.pop();
+    }
+
+    const closed = segments
       .filter((seg) => seg.length >= 3)
       .map((seg) => {
-        const first = seg[0], last = seg[seg.length - 1];
-        if (first[0] !== last[0] || first[1] !== last[1]) seg.push([first[0], first[1]]);
+        const f = seg[0], l = seg[seg.length - 1];
+        if (f[0] !== l[0] || f[1] !== l[1]) seg.push([f[0], f[1]]);
         return seg;
       });
+
+    const stillBroken = closed.some(
+      (p) => bboxLonSpan(p) > 200 || p.some(([lon, lat]) => !Number.isFinite(lon) || !Number.isFinite(lat))
+    );
+    return stillBroken ? [ring] : closed;
   }
 
   function fixAntimeridianCrossings(geo) {
