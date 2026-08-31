@@ -1,5 +1,7 @@
 /* frontend/css/layout.css
-   Overall page structure: full-bleed map with a right-side panel overlay.
+   Overall page structure: map and panel split the viewport as flex siblings
+   (not an overlay) so the panel never covers part of the map -- the map's
+   own visible area is (100% - panel width), not the full viewport.
    Component-specific styling lives in css/map.css, css/clock.css, etc. */
 
 html, body { height: 100%; overflow: hidden; }
@@ -11,27 +13,23 @@ html, body { height: 100%; overflow: hidden; }
 [hidden] { display: none !important; }
 
 #app {
-  position: relative;
+  display: flex;
   height: 100vh;
   width: 100vw;
 }
 
 #map-root {
-  position: absolute;
-  inset: 0;
-  z-index: 0; /* contain Leaflet's internally z-indexed panes so they can't
-                 paint above #panel -- position:absolute alone does not
-                 establish a stacking context without an explicit z-index */
+  position: relative; /* containing block for Leaflet's own absolutely-positioned panes */
+  flex: 1 1 auto;
+  min-width: 0; /* allow the map to shrink below its content's intrinsic width */
+  height: 100%;
 }
 
 #panel {
-  position: absolute;
-  z-index: 10;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 380px;
-  max-width: 92vw;
+  flex: 0 0 340px;
+  width: 340px;
+  max-width: 100vw;
+  height: 100%;
   background: var(--panel-bg);
   border-left: 1px solid var(--panel-border);
   box-shadow: var(--shadow-panel);
@@ -40,6 +38,12 @@ html, body { height: 100%; overflow: hidden; }
   padding: var(--space-4);
   gap: var(--space-3);
   overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  #app { flex-direction: column; }
+  #map-root { flex: 1 1 40%; min-height: 0; }
+  #panel { flex: 1 1 60%; width: 100%; border-left: none; border-top: 1px solid var(--panel-border); }
 }
 
 #panel-header h1 {
@@ -125,8 +129,4 @@ html, body { height: 100%; overflow: hidden; }
 
 .city-clock-mount {
   margin-top: var(--space-2);
-}
-
-@media (max-width: 640px) {
-  #panel { width: 100vw; }
 }
