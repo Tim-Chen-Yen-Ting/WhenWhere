@@ -34,20 +34,26 @@
     return String(raw || "").trim().toLowerCase();
   }
 
-  // Requirement 2: match if any whitespace-split word in the city name starts
-  // with the (whole, un-split) typed text, case-insensitive. Sorted alphabetically.
-  // Requirement 3: an exact alias-key hit also surfaces its target city, even if
-  // that city wouldn't otherwise prefix-match. Capped at MAX_RESULTS after merge+sort.
+  // Match if every whitespace-split word of the (also split) typed query is a
+  // prefix of some word in the city name, case-insensitive, in any order --
+  // so "new york" matches "New York" ("new"->"New", "york"->"York"), not just
+  // single-word queries. Sorted alphabetically.
+  // An exact alias-key hit (on the whole trimmed query) also surfaces its
+  // target city, even if it wouldn't otherwise prefix-match. Capped at
+  // MAX_RESULTS after merge+sort.
   function computeMatches(rawQuery) {
     const q = normalizeQuery(rawQuery);
     if (!q) return [];
+
+    const queryWords = q.split(/\s+/).filter(Boolean);
 
     const seen = new Set();
     const results = [];
 
     for (const c of cities) {
-      const words = c.city.split(/\s+/);
-      if (words.some((w) => w.toLowerCase().startsWith(q))) {
+      const cityWords = c.city.toLowerCase().split(/\s+/);
+      const matches = queryWords.every((qw) => cityWords.some((cw) => cw.startsWith(qw)));
+      if (matches) {
         if (!seen.has(c.city)) {
           seen.add(c.city);
           results.push(c);
