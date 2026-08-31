@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from backend.logic.scheduler import (
-    resolve_city, CITY_TZ, parse_local,
+    resolve_city, CITY_TZ, CITY_DB, parse_local,
     convert_all, convert_one, convert_range, overlap_same_local
 )
 
@@ -15,6 +15,15 @@ app = FastAPI(title="WhenWhere API")
 @app.get("/cities")
 def cities_list():
     return {"cities":sorted(CITY_TZ.keys())}
+
+@app.get("/city_data")
+def city_data():
+    """Full per-city records (name, timezone, lat/lon) for client-side map
+    placement and client-side timezone math -- avoids a round trip per interaction."""
+    return {"cities": [
+        {"city": row["city"], "timezone": row["timezone"], "lat": row["lat"], "lon": row["lon"]}
+        for row in CITY_DB
+    ]}
 
 app.add_middleware(
     CORSMiddleware,
