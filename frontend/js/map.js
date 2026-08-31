@@ -53,12 +53,75 @@
     if (state === "selected") marker.bringToFront();
   }
 
+  // world-atlas's polygon rings are not pre-split at the antimeridian (a
+  // known gotcha -- Russia, Fiji, and Antarctica all cross +/-180deg
+  // longitude). Leaflet's plain lat/lng-to-pixel rendering has no wrapping
+  // awareness, so an unsplit ring draws a straight edge connecting e.g.
+  // lon=179.9 to lon=-179.9, which renders as a spurious band clear across
+  // the map. Split each ring wherever it jumps >180deg in longitude and
+  // reclose each resulting piece on its own; a no-op for the ~180 countries
+  // that never cross the antimeridian.
+  function splitRingAtAntimeridian(ring) {
+    const segments = [];
+    let current = [ring[0]];
+    let didSplit = false;
+    for (let i = 1; i < ring.length; i++) {
+      if (Math.abs(ring[i][0] - ring[i - 1][0]) > 180) {
+        didSplit = true;
+        segments.push(current);
+        current = [];
+      }
+      current.push(ring[i]);
+    }
+    segments.push(current);
+    if (!didSplit) return [ring];
+    return segments
+      .filter((seg) => seg.length >= 3)
+      .map((seg) => {
+        const first = seg[0], last = seg[seg.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) seg.push([first[0], first[1]]);
+        return seg;
+      });
+  }
+
+  function fixAntimeridianCrossings(geo) {
+    const features = geo.features.map((feature) => {
+      const geom = feature.geometry;
+      if (!geom) return feature;
+
+      if (geom.type === "Polygon") {
+        const [outer, ...holes] = geom.coordinates;
+        const parts = splitRingAtAntimeridian(outer);
+        if (parts.length === 1) return feature;
+        return {
+          ...feature,
+          geometry: {
+            type: "MultiPolygon",
+            coordinates: parts.map((ring, i) => (i === 0 ? [ring, ...holes] : [ring])),
+          },
+        };
+      }
+
+      if (geom.type === "MultiPolygon") {
+        const newPolys = [];
+        for (const [outer, ...holes] of geom.coordinates) {
+          const parts = splitRingAtAntimeridian(outer);
+          parts.forEach((ring, i) => newPolys.push(i === 0 ? [ring, ...holes] : [ring]));
+        }
+        return { ...feature, geometry: { type: "MultiPolygon", coordinates: newPolys } };
+      }
+
+      return feature;
+    });
+    return { ...geo, features };
+  }
+
   function buildCountryOutlines(map) {
     fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
       .then((r) => r.json())
       .then((worldData) => {
         if (typeof topojson === "undefined") return;
-        const geo = topojson.feature(worldData, worldData.objects.countries);
+        const geo = fixAntimeridianCrossings(topojson.feature(worldData, worldData.objects.countries));
         L.geoJSON(geo, {
           style: {
             color: token("--map-land-border", "#8c7f5c"),
