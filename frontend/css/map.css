@@ -5,11 +5,11 @@
    to match the dark theme, and the click-pulse animation. */
 
 #map-root {
-  background: var(--bg);
+  background: var(--map-sea);
 }
 
 .leaflet-container {
-  background: var(--bg);
+  background: var(--map-sea);
   font-family: var(--font-ui);
   outline: none;
 }

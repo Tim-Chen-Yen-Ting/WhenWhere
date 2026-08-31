@@ -61,9 +61,9 @@
         const geo = topojson.feature(worldData, worldData.objects.countries);
         L.geoJSON(geo, {
           style: {
-            color: token("--panel-border", "#232c45"),
+            color: token("--map-land-border", "#8c7f5c"),
             weight: 1,
-            fillColor: token("--bg-raised", "#0f1526"),
+            fillColor: token("--map-land", "#d9c68a"),
             fillOpacity: 1,
           },
           interactive: false,

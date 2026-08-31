@@ -19,7 +19,14 @@
   --bad: #f87171;
   --warn: #fbbf24;
 
-  --night-overlay: rgba(3, 6, 14, 0.6);
+  /* Map "day" colors -- land/sea always render in these lit colors; the
+     night overlay darkens them rather than replacing them with black, so
+     borders and coastlines stay legible on the night side too. */
+  --map-sea: #0f3355;
+  --map-land: #d9c68a;
+  --map-land-border: #8c7f5c;
+  --night-overlay: rgba(8, 14, 28, 0.55);
+
   --dot-default: #cfd8ee;
   --dot-selected: #4fc3f7;
 
