@@ -2,6 +2,9 @@
 
 DST‑safe, timezone‑aware meeting planner for cross‑continent coordination.
 
+**Live demo:** https://whenwhere-65it.onrender.com/ (free tier — first load after
+idle can take 30–50s to spin up)
+
 ## Features
 - One‑to‑many time conversion across all supported cities
 - Point or range conversion between two cities
@@ -15,29 +18,18 @@ DST‑safe, timezone‑aware meeting planner for cross‑continent coordination.
 
 ## Run Locally
 
-### Backend (FastAPI)
 ```bash
 python -m venv venv
 source venv/bin/activate  # windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn backend.app:app --reload
 ```
-
-### Frontend
-Serve the `frontend` directory over HTTP (opening `frontend/index.html` directly as a
-`file://` URL can break the API calls):
-```bash
-cd frontend
-python -m http.server 3000
-```
-Then open `http://127.0.0.1:3000`. Frontend expects the API at `http://127.0.0.1:8000`.
+Then open `http://127.0.0.1:8000/` — the FastAPI app serves the frontend directly, so no
+separate static file server is needed.
 
 ---
 
 ## API
-
-### GET /
-Health check. Returns `{"message": "WhenWhere backend running"}`.
 
 ### GET /cities
 Returns a list of supported city names.
