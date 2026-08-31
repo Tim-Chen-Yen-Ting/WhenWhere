@@ -207,29 +207,32 @@
     terminatorIntervalId = setInterval(refresh, 60000);
   }
 
+  function createMarkerFor(record) {
+    const marker = L.circleMarker([record.lat, record.lon], {
+      radius: RADII.neutral,
+      color: colorForState("neutral"),
+      fillColor: colorForState("neutral"),
+      fillOpacity: 0.85,
+      weight: 1,
+      pane: "cityMarkers",
+    });
+    marker.bindTooltip(record.city, { direction: "top", offset: [0, -4] });
+    marker.on("click", () => {
+      pulse(marker.getLatLng());
+      for (const cb of clickCallbacks) {
+        try { cb(record); } catch (err) { console.error("WWMap: onCityClick handler threw", err); }
+      }
+    });
+    marker.addTo(cityLayer);
+    markersByCity[record.city] = marker;
+    return marker;
+  }
+
   function buildCityMarkers(map, cities) {
     cityLayer = L.layerGroup().addTo(map);
     markersByCity = Object.create(null);
 
-    for (const record of cities) {
-      const marker = L.circleMarker([record.lat, record.lon], {
-        radius: RADII.neutral,
-        color: colorForState("neutral"),
-        fillColor: colorForState("neutral"),
-        fillOpacity: 0.85,
-        weight: 1,
-        pane: "cityMarkers",
-      });
-      marker.bindTooltip(record.city, { direction: "top", offset: [0, -4] });
-      marker.on("click", () => {
-        pulse(marker.getLatLng());
-        for (const cb of clickCallbacks) {
-          try { cb(record); } catch (err) { console.error("WWMap: onCityClick handler threw", err); }
-        }
-      });
-      marker.addTo(cityLayer);
-      markersByCity[record.city] = marker;
-    }
+    for (const record of cities) createMarkerFor(record);
     for (const name in markersByCity) applyMarkerState(name);
   }
 
@@ -308,5 +311,13 @@
     for (const name in markersByCity) applyMarkerState(name);
   }
 
-  global.WWMap = { init, onCityClick, setCityStates };
+  // Add a single new marker without rebuilding the whole map -- for cities
+  // added at runtime (e.g. the custom-city form) after init() already ran.
+  function addCity(record) {
+    if (!map || !cityLayer || markersByCity[record.city]) return;
+    createMarkerFor(record);
+    applyMarkerState(record.city);
+  }
+
+  global.WWMap = { init, onCityClick, setCityStates, addCity };
 })(typeof window !== "undefined" ? window : globalThis);

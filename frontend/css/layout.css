@@ -20,6 +20,10 @@ html, body { height: 100%; overflow: hidden; }
 
 #map-root {
   position: relative; /* containing block for Leaflet's own absolutely-positioned panes */
+  z-index: 0; /* also establishes a stacking context, so Leaflet's internally
+                 z-indexed panes (up to ~650) can't escape past #map-root and
+                 paint above later-in-DOM elements like .modal-overlay --
+                 position:relative alone does NOT create a stacking context */
   flex: 1 1 auto;
   min-width: 0; /* allow the map to shrink below its content's intrinsic width */
   height: 100%;

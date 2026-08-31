@@ -1,7 +1,7 @@
 # backend/logic/scheduler.py
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
-import pytz, json, re
+import pytz, json, re, math
 from pathlib import Path
 
 # --- Data loading & aliases ---
@@ -11,6 +11,115 @@ with open(DB_PATH, "r", encoding="utf-8") as f:
 
 # Preload tz objects
 CITY_TZ = { row["city"]: pytz.timezone(row["timezone"]) for row in CITY_DB }
+
+# --- User-appended cities (separate file from the official city_db.json) ---
+USER_DB_PATH = Path(__file__).resolve().parents[1] / "user_cities.json"
+
+def _load_user_cities() -> List[Dict[str, Any]]:
+    if USER_DB_PATH.exists():
+        with open(USER_DB_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+USER_CITY_DB = _load_user_cities()
+for row in USER_CITY_DB:
+    CITY_TZ[row["city"]] = pytz.timezone(row["timezone"])
+
+def _save_user_cities() -> None:
+    with open(USER_DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(USER_CITY_DB, f, indent=2, ensure_ascii=False)
+
+def all_city_records() -> List[Dict[str, Any]]:
+    """Official + user-appended cities, for endpoints that list the full set."""
+    return CITY_DB + USER_CITY_DB
+
+def _haversine_km(lat1, lon1, lat2, lon2) -> float:
+    r = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlambda / 2) ** 2
+    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+def _lon_gap(a: float, b: float) -> float:
+    d = abs(a - b)
+    return min(d, 360 - d)  # shortest way around, across the antimeridian
+
+# Timezones are roughly 15deg-wide longitude bands, so cities within this
+# band of the target's longitude are strongly preferred as neighbors --
+# they're overwhelmingly likely to share (or be adjacent to) the actual
+# timezone, regardless of how far away they are in latitude.
+VERTICAL_BAND_DEG = 10.0
+
+# Beyond this distance, a "nearest" city is no longer a trustworthy stand-in
+# for the target's actual timezone -- political timezone quirks (Adelaide's
+# UTC+9:30, Eucla's UTC+8:45 -- offsets that don't fit a clean multiple of
+# 15deg longitude) are real but LOCAL, and importing one wholesale into a
+# location hundreds of km away that likely doesn't share that quirk is worse
+# than just using the standard longitude-based formula.
+SAME_REGION_KM = 500.0
+
+def _formula_timezone(lon: float) -> str:
+    """Standard whole-hour UTC-offset-from-longitude estimate (offset =
+    round(lon / 15)), as a fixed-offset Etc/GMT zone. Note IANA's Etc/GMT
+    zones use an INVERTED sign vs. common convention (Etc/GMT-9 = UTC+9)."""
+    offset_hours = max(-12, min(14, round(lon / 15)))
+    if offset_hours == 0:
+        return "Etc/GMT"
+    sign = "-" if offset_hours > 0 else "+"
+    return f"Etc/GMT{sign}{abs(offset_hours)}"
+
+def approximate_timezone(lat: float, lon: float):
+    """Timezone approximation for a city not in the official database.
+
+    Base case: the standard longitude/15 formula. But that formula alone
+    misses real political quirks -- entire regions can sit at a non-clean
+    offset (Adelaide/Eucla's half- and quarter-hour zones, for instance) that
+    no formula would predict. So: find the nearest official city, prioritizing
+    matching by LONGITUDE (a "vertical" search, scanning latitude at a similar
+    longitude) over latitude, since timezones are fundamentally
+    longitude-determined bands. If that nearest city is close enough to
+    plausibly be in the SAME REGION (within SAME_REGION_KM), trust its real,
+    already-correct timezone instead of the formula. If the nearest official
+    city is too far away to be a reliable regional reference (e.g. a remote
+    area with no nearby city in a 338-city database), fall back to the clean
+    formula rather than importing a distant city's specific, likely
+    unrepresentative quirk.
+
+    Only searches the OFFICIAL city_db.json (never previously-approximated
+    user cities), so approximation error can't compound across additions.
+    Returns (timezone_str, nearest_city_name, distance_km).
+    """
+    candidates = [row for row in CITY_DB if _lon_gap(row["lon"], lon) <= VERTICAL_BAND_DEG]
+    if not candidates:
+        candidates = CITY_DB
+
+    nearest = min(candidates, key=lambda row: _haversine_km(lat, lon, row["lat"], row["lon"]))
+    distance_km = round(_haversine_km(lat, lon, nearest["lat"], nearest["lon"]))
+
+    if distance_km <= SAME_REGION_KM:
+        return nearest["timezone"], nearest["city"], distance_km
+    return _formula_timezone(lon), nearest["city"], distance_km
+
+def register_user_city(name: str, lat: float, lon: float) -> Dict[str, Any]:
+    """Approximate a new city's timezone, persist it to user_cities.json, and
+    make it immediately resolvable (CITY_TZ) without a server restart."""
+    try:
+        resolve_city(name)
+        exists = True
+    except ValueError:
+        exists = False
+    if exists:
+        raise ValueError(f"'{name}' already exists")
+
+    timezone, nearest_city, distance_km = approximate_timezone(lat, lon)
+    record = {"city": name, "timezone": timezone, "lat": lat, "lon": lon}
+
+    USER_CITY_DB.append(record)
+    CITY_TZ[name] = pytz.timezone(timezone)
+    _save_user_cities()
+
+    return {**record, "nearestOfficialCity": nearest_city, "distanceKm": distance_km}
 
 # simple alias map (expand as you like)
 ALIASES = {

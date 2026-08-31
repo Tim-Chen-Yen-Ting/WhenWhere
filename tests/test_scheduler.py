@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import pytest
@@ -8,7 +9,20 @@ from backend.logic.scheduler import (
     utc_offset_label,
     day_shift,
     overlap_same_local,
+    approximate_timezone,
 )
+import backend.logic.scheduler as scheduler_module
+
+
+@pytest.fixture
+def isolated_user_cities(tmp_path, monkeypatch):
+    """Redirect user-city registration to a scratch file and a fresh copy of
+    CITY_TZ, so tests can't pollute the real backend/user_cities.json or the
+    real in-memory city registry (monkeypatch restores the originals after)."""
+    monkeypatch.setattr(scheduler_module, "USER_DB_PATH", tmp_path / "user_cities.json")
+    monkeypatch.setattr(scheduler_module, "USER_CITY_DB", [])
+    monkeypatch.setattr(scheduler_module, "CITY_TZ", dict(scheduler_module.CITY_TZ))
+    return scheduler_module
 
 
 def test_resolve_city_aliases():
@@ -112,3 +126,79 @@ def test_overlap_same_local_is_single_contiguous_block():
     )
     if r["overlap"] is not None:
         assert len(r["overlap"]) == 1
+
+
+def test_approximate_timezone_matches_a_nearby_official_city():
+    # Reykjavik itself should win as its own nearest neighbor, ~0km away.
+    tz, nearest, dist = approximate_timezone(64.1466, -21.9426)
+    assert tz == "Atlantic/Reykjavik"
+    assert nearest == "Reykjavik"
+    assert dist < 10
+
+
+def test_approximate_timezone_prefers_longitude_band_over_raw_distance():
+    # Near Alice Springs, Australia -- the nearest official city by raw
+    # straight-line distance could easily be an equatorial Pacific island
+    # whose longitude happens to line up closely (a real failure mode this
+    # regression-tests for), rather than a farther-but-same-region match.
+    # Whatever city it picks as "nearest" must be in the right hemisphere/
+    # region (Australia), not on the other side of the globe.
+    tz, nearest, dist = approximate_timezone(-23.7, 133.9)
+    assert nearest in ("Eucla", "Adelaide", "Darwin", "Perth", "Alice Springs")
+
+
+def test_approximate_timezone_falls_back_to_formula_when_nearest_city_is_far():
+    # Alice Springs' nearest official city (Eucla) is ~1000km away and has an
+    # unusual, very LOCAL UTC+8:45 offset (not a clean multiple of 15deg
+    # longitude). That's too far to trust as a regional stand-in -- importing
+    # it would be worse than the plain longitude-based formula.
+    tz, nearest, dist = approximate_timezone(-23.7, 133.9)
+    assert nearest == "Eucla"
+    assert dist > scheduler_module.SAME_REGION_KM
+    assert tz == "Etc/GMT-9"  # round(133.9 / 15) = 9, Etc/GMT sign is inverted
+
+
+def test_approximate_timezone_inherits_nearby_regional_quirk():
+    # A point genuinely close to Adelaide should inherit its real
+    # UTC+9:30 offset (a political quirk no formula would predict), not a
+    # "clean" formula-only estimate.
+    tz, nearest, dist = approximate_timezone(-34.5, 139.0)
+    assert nearest == "Adelaide"
+    assert dist <= scheduler_module.SAME_REGION_KM
+    assert tz == "Australia/Adelaide"
+
+
+def test_register_user_city_persists_and_resolves(isolated_user_cities):
+    record = isolated_user_cities.register_user_city("Test Adelaide Suburb", -34.5, 139.0)
+    assert record["city"] == "Test Adelaide Suburb"
+    assert record["timezone"] == "Australia/Adelaide"
+    assert record["nearestOfficialCity"] == "Adelaide"
+    assert "distanceKm" in record
+
+    assert "Test Adelaide Suburb" in isolated_user_cities.CITY_TZ
+    saved = json.loads(isolated_user_cities.USER_DB_PATH.read_text())
+    assert saved == [{
+        "city": "Test Adelaide Suburb",
+        "timezone": "Australia/Adelaide",
+        "lat": -34.5,
+        "lon": 139.0,
+    }]
+
+
+def test_register_user_city_rejects_duplicates(isolated_user_cities):
+    isolated_user_cities.register_user_city("Duplicate City", 0, 0)
+    with pytest.raises(ValueError):
+        isolated_user_cities.register_user_city("Duplicate City", 1, 1)
+    # Case-insensitive collision with an OFFICIAL city should also be rejected.
+    with pytest.raises(ValueError):
+        isolated_user_cities.register_user_city("tokyo", 1, 1)
+
+
+def test_registered_user_city_is_usable_in_overlap_same_local(isolated_user_cities):
+    isolated_user_cities.register_user_city("Test Outback Town", -23.7, 133.9)
+    r = overlap_same_local(
+        ["Taipei", "Test Outback Town"],
+        datetime(2026, 8, 30, 9, 0),
+        datetime(2026, 8, 30, 18, 0),
+    )
+    assert r["per_city"][1]["city"] == "Test Outback Town"

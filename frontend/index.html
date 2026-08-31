@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/clock.css" />
   <link rel="stylesheet" href="css/search.css" />
   <link rel="stylesheet" href="css/grid.css" />
+  <link rel="stylesheet" href="css/customCity.css" />
 </head>
 <body>
   <div id="app">
@@ -21,6 +22,7 @@
         <h1>WhenWhere</h1>
         <div id="search-wrap">
           <input id="search-input" type="text" placeholder="Add a city..." autocomplete="off" />
+          <button id="add-custom-city-btn" type="button" title="Add a city not in the list">+</button>
           <div id="search-results" hidden></div>
         </div>
       </header>
@@ -43,6 +45,33 @@
 
       <p id="empty-hint">Click a city on the map, or search above, to start.</p>
     </aside>
+  </div>
+
+  <div id="custom-city-modal" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="custom-city-title">
+      <h2 id="custom-city-title">Add a custom city</h2>
+      <p class="modal-hint">
+        Not in the official list? Give it a name and coordinates and its
+        timezone will be approximated from the nearest known city.
+      </p>
+      <label class="modal-field">
+        City name
+        <input id="custom-city-name" type="text" autocomplete="off" />
+      </label>
+      <label class="modal-field">
+        Latitude
+        <input id="custom-city-lat" type="number" step="any" min="-90" max="90" placeholder="-90 to 90" />
+      </label>
+      <label class="modal-field">
+        Longitude
+        <input id="custom-city-lon" type="number" step="any" min="-180" max="180" placeholder="-180 to 180" />
+      </label>
+      <p id="custom-city-error" class="modal-error" hidden></p>
+      <div class="modal-actions">
+        <button id="custom-city-cancel" type="button">Cancel</button>
+        <button id="custom-city-submit" type="button">Add city</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>

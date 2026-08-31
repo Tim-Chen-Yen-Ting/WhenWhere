@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from backend.logic.scheduler import (
-    resolve_city, CITY_TZ, CITY_DB, parse_local,
+    resolve_city, CITY_TZ, all_city_records, register_user_city, parse_local,
     convert_all, convert_one, convert_range, overlap_same_local
 )
 
@@ -19,11 +19,28 @@ def cities_list():
 @app.get("/city_data")
 def city_data():
     """Full per-city records (name, timezone, lat/lon) for client-side map
-    placement and client-side timezone math -- avoids a round trip per interaction."""
+    placement and client-side timezone math -- avoids a round trip per interaction.
+    Includes both the official database and any user-appended cities."""
     return {"cities": [
         {"city": row["city"], "timezone": row["timezone"], "lat": row["lat"], "lon": row["lon"]}
-        for row in CITY_DB
+        for row in all_city_records()
     ]}
+
+class UserCityRequest(BaseModel):
+    city: str
+    lat: float = Field(..., ge=-90, le=90)
+    lon: float = Field(..., ge=-180, le=180)
+
+@app.post("/user_cities")
+def add_user_city(req: UserCityRequest):
+    name = req.city.strip()
+    if not name:
+        return {"error": "City name is required"}
+    try:
+        record = register_user_city(name, req.lat, req.lon)
+    except ValueError as e:
+        return {"error": str(e)}
+    return record
 
 app.add_middleware(
     CORSMiddleware,

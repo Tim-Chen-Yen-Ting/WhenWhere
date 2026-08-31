@@ -37,6 +37,14 @@
     searchInput: document.getElementById("search-input"),
     searchResults: document.getElementById("search-results"),
     mapRoot: document.getElementById("map-root"),
+    addCustomCityBtn: document.getElementById("add-custom-city-btn"),
+    customCityModal: document.getElementById("custom-city-modal"),
+    customCityName: document.getElementById("custom-city-name"),
+    customCityLat: document.getElementById("custom-city-lat"),
+    customCityLon: document.getElementById("custom-city-lon"),
+    customCityError: document.getElementById("custom-city-error"),
+    customCityCancel: document.getElementById("custom-city-cancel"),
+    customCitySubmit: document.getElementById("custom-city-submit"),
   };
 
   let rangeStartClock = null;
@@ -65,6 +73,78 @@
     renderWorkingList();
     recompute();
   }
+
+  // Register a city (from the custom-city form) into the same in-memory
+  // registry /city_data cities live in, so it behaves identically everywhere
+  // (search, map dots, working panel) without a full reload.
+  function registerNewCity(rec) {
+    state.cityData.push(rec);
+    state.cityByName.set(rec.city, rec);
+    if (window.WWMap) window.WWMap.addCity(rec);
+  }
+
+  // ---- custom city modal ----
+
+  function openCustomCityModal() {
+    els.customCityName.value = "";
+    els.customCityLat.value = "";
+    els.customCityLon.value = "";
+    els.customCityError.hidden = true;
+    els.customCityModal.hidden = false;
+    els.customCityName.focus();
+  }
+
+  function closeCustomCityModal() {
+    els.customCityModal.hidden = true;
+  }
+
+  function showCustomCityError(message) {
+    els.customCityError.textContent = message;
+    els.customCityError.hidden = false;
+  }
+
+  async function submitCustomCity() {
+    const name = els.customCityName.value.trim();
+    const lat = parseFloat(els.customCityLat.value);
+    const lon = parseFloat(els.customCityLon.value);
+
+    if (!name) return showCustomCityError("City name is required.");
+    if (Number.isNaN(lat) || lat < -90 || lat > 90) return showCustomCityError("Latitude must be between -90 and 90.");
+    if (Number.isNaN(lon) || lon < -180 || lon > 180) return showCustomCityError("Longitude must be between -180 and 180.");
+
+    els.customCitySubmit.disabled = true;
+    try {
+      const res = await fetch("/user_cities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city: name, lat, lon }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        showCustomCityError(data.error);
+        return;
+      }
+      registerNewCity(data);
+      closeCustomCityModal();
+      addCity(data); // the whole point of adding it is to use it right away
+    } catch (err) {
+      showCustomCityError("Couldn't reach the server. Try again.");
+      console.error("submitCustomCity failed", err);
+    } finally {
+      els.customCitySubmit.disabled = false;
+    }
+  }
+
+  els.addCustomCityBtn.addEventListener("click", openCustomCityModal);
+  els.customCityCancel.addEventListener("click", closeCustomCityModal);
+  els.customCitySubmit.addEventListener("click", submitCustomCity);
+  els.customCityModal.addEventListener("click", (e) => {
+    if (e.target === els.customCityModal) closeCustomCityModal(); // click on the backdrop
+  });
+  els.customCityModal.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeCustomCityModal();
+    else if (e.key === "Enter" && e.target !== els.customCityCancel) submitCustomCity();
+  });
 
   // ---- rendering the working list ----
 

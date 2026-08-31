@@ -1,0 +1,81 @@
+/* frontend/css/customCity.css
+   Modal dialog for adding a city not in the official database.
+   The "+" button that opens it lives in #search-wrap, styled in search.css. */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(3, 6, 14, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.modal {
+  width: 320px;
+  max-width: 100%;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.modal h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.modal-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.modal-field input {
+  background: var(--bg-raised);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+}
+.modal-field input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--glow-accent);
+}
+
+.modal-error {
+  margin: 0;
+  color: var(--bad);
+  font-size: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+#custom-city-submit {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+#custom-city-submit:hover {
+  box-shadow: var(--glow-accent);
+}
