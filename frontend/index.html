@@ -4,40 +4,55 @@
   <meta charset="utf-8" />
   <title>WhenWhere</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <link rel="stylesheet" href="css/tokens.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/map.css" />
+  <link rel="stylesheet" href="css/clock.css" />
+  <link rel="stylesheet" href="css/search.css" />
+  <link rel="stylesheet" href="css/grid.css" />
 </head>
 <body>
-  <h1>WhenWhere</h1>
+  <div id="app">
+    <div id="map-root" aria-label="World map"></div>
 
-  <div class="row" id="cityRow">
-    <div id="cityList" class="row" style="gap:10px;"></div>
-    <button id="addCity">Add city</button>
-    <a id="removeCity" href="javascript:void(0)" style="margin-left:8px;text-decoration:underline;color:#333">remove city</a>
+    <aside id="panel">
+      <header id="panel-header">
+        <h1>WhenWhere</h1>
+        <div id="search-wrap">
+          <input id="search-input" type="text" placeholder="Add a city..." autocomplete="off" />
+          <div id="search-results" hidden></div>
+        </div>
+      </header>
+
+      <div id="mode-toggle" role="group" aria-label="Mode">
+        <button id="mode-point" class="mode-btn is-active" type="button">Point</button>
+        <button id="mode-range" class="mode-btn" type="button">Range</button>
+        <button id="format-toggle" type="button" title="Toggle 12h/24h">24h</button>
+      </div>
+
+      <div id="range-window" hidden>
+        <div id="range-start-clock" class="range-clock-mount"></div>
+        <span class="range-sep">to</span>
+        <div id="range-end-clock" class="range-clock-mount"></div>
+      </div>
+
+      <div id="working-cities"></div>
+
+      <div id="grid-root" hidden></div>
+
+      <p id="empty-hint">Click a city on the map, or search above, to start.</p>
+    </aside>
   </div>
 
-  <div class="row">
-    <input type="date" id="dateInput" />
-    <select id="hour"></select>
-    <select id="minute"></select>
-
-    <span id="endWrap" style="display:none">
-        <input type="date" id="endDate" />
-        <select id="endHour"></select>
-        <select id="endMinute"></select>
-    </span>
-
-    <button id="run">Compute</button>
-
-    <label class="switch" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px">
-        <input type="checkbox" id="rangeToggle" />
-        <span class="slider"></span>
-    </label>
-    <span id="rangeLabel" style="font-size:14px">Range</span>
-  </div>
-
-  <div id="out"></div>
-
-  <script src="app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@joergdietrich/leaflet.terminator@1.1.0/L.Terminator.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+  <script src="js/tzmath.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/clock.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
- 

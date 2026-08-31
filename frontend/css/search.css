@@ -1,0 +1,81 @@
+/* frontend/css/search.css
+   City search / autocomplete bar: #search-input + its dropdown, #search-results.
+   #search-wrap (in index.html) is the positioning context for the dropdown. */
+
+#search-wrap {
+  position: relative;
+}
+
+#search-input {
+  width: 100%;
+  background: var(--bg-raised);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#search-input::placeholder {
+  color: var(--text-faint);
+}
+
+#search-input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--glow-accent);
+}
+
+#search-results {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-panel);
+  max-height: 280px;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+}
+
+#search-results[hidden] {
+  display: none;
+}
+
+.search-result {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.search-result:hover,
+.search-result.is-highlighted {
+  background: var(--bg-raised);
+}
+
+.search-result.is-highlighted {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.search-result-city {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-tz {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}

@@ -1,0 +1,129 @@
+/* frontend/css/grid.css
+   The when2meet-style range-overlap grid, mounted at #grid-root.
+   Layout: for each selected city, a 2-row x 24-col CSS Grid (local-hour
+   header row + overlap status row) with a sticky left label column. All
+   cities' grids share the same fixed column template so column K always
+   lines up to the same real-world instant across every city, and they sit
+   in one horizontally-scrollable strip so they scroll in sync. */
+
+#grid-root {
+  --ww-label-w: 68px;
+  --ww-cell-w: 34px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ww-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+.ww-grid-status-msg {
+  font-size: 12px;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
+}
+.ww-grid-status-msg.is-good {
+  color: var(--good);
+  border-color: var(--good);
+  background: rgba(74, 222, 128, 0.08);
+}
+.ww-grid-status-msg.is-bad {
+  color: var(--bad);
+  border-color: var(--bad);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.ww-grid-exact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.ww-grid-exact-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 2px var(--space-1);
+}
+.ww-grid-exact-city {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ww-grid-exact-time {
+  font-family: var(--font-mono);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.ww-grid-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.ww-grid-city {
+  display: grid;
+  /* grid-template-columns set inline per-block: label col + 24 hour cols */
+  grid-auto-rows: 24px;
+  align-items: stretch;
+}
+.ww-grid-city + .ww-grid-city {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--panel-border);
+}
+
+.ww-grid-label {
+  grid-row: span 2;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2) 0 0;
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ww-grid-hour {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--panel-border);
+  white-space: nowrap;
+}
+
+.ww-grid-status {
+  background: var(--panel-border);
+  border-left: 1px solid var(--bg-raised);
+}
+.ww-grid-status.is-full {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 640px) {
+  #grid-root {
+    --ww-label-w: 58px;
+    --ww-cell-w: 28px;
+  }
+}

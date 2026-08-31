@@ -1,0 +1,149 @@
+/* frontend/css/clock.css
+   Digital clock display/editor widget (WWClock). Instantiated many times per
+   page -- keep every rule scoped under .ww-clock so instances never bleed
+   into each other or their host layout. */
+
+.ww-clock {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 118px;
+  background: var(--bg-raised);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  font-family: var(--font-ui);
+  color: var(--text);
+  user-select: none;
+}
+
+/* ---- corner controls ---- */
+
+.ww-clock-fmt-toggle {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  padding: 1px 5px;
+  font-size: 9px;
+  line-height: 1.5;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+}
+.ww-clock-fmt-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+.ww-clock-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--bg);
+  background: var(--warn);
+  border-radius: var(--radius-sm);
+}
+
+/* ---- time row ---- */
+
+.ww-clock-time {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  margin-top: var(--space-1);
+}
+
+.ww-clock-colon {
+  opacity: 0.55;
+  padding: 0 1px;
+}
+
+.ww-clock-seg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2ch;
+  padding: 2px 3px;
+  border-radius: var(--radius-sm);
+  touch-action: none;
+  outline: none;
+}
+
+.ww-clock:not(.is-readonly) .ww-clock-seg {
+  cursor: pointer;
+}
+.ww-clock:not(.is-readonly) .ww-clock-seg:hover,
+.ww-clock:not(.is-readonly) .ww-clock-seg:focus-visible {
+  background: rgba(79, 195, 247, 0.14);
+  color: var(--accent);
+}
+
+.ww-clock-seg-input {
+  width: 2.1ch;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  outline: none;
+}
+
+.ww-clock-ampm {
+  align-self: flex-end;
+  margin-left: var(--space-1);
+  margin-bottom: 3px;
+  padding: 1px 4px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+.ww-clock:not(.is-readonly) .ww-clock-ampm {
+  cursor: pointer;
+}
+.ww-clock:not(.is-readonly) .ww-clock-ampm:hover,
+.ww-clock:not(.is-readonly) .ww-clock-ampm:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+/* ---- date / offset lines ---- */
+
+.ww-clock-date {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.ww-clock-offset {
+  margin-top: 1px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* ---- read-only variant ---- */
+
+.ww-clock.is-readonly .ww-clock-seg,
+.ww-clock.is-readonly .ww-clock-ampm {
+  cursor: default;
+}

@@ -1,0 +1,65 @@
+/* frontend/css/tokens.css
+   Shared design tokens for the whole app. Every component stylesheet should
+   reference these custom properties (var(--xxx)) rather than inventing new
+   colors, so independently-built pieces stay visually consistent. */
+
+:root {
+  --bg: #0a0e17;
+  --bg-raised: #0f1526;
+  --panel-bg: #131a2b;
+  --panel-border: #232c45;
+
+  --text: #e8ecf5;
+  --text-dim: #8b96b3;
+  --text-faint: #566080;
+
+  --accent: #4fc3f7;
+  --accent-dim: #2b7fa3;
+  --good: #4ade80;
+  --bad: #f87171;
+  --warn: #fbbf24;
+
+  --night-overlay: rgba(3, 6, 14, 0.6);
+  --dot-default: #cfd8ee;
+  --dot-selected: #4fc3f7;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 20px;
+  --space-5: 32px;
+
+  --font-ui: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, Consolas, "SF Mono", monospace;
+
+  --shadow-panel: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --glow-accent: 0 0 8px rgba(79, 195, 247, 0.6);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  margin: 0;
+}
+
+button, input, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+button:hover { border-color: var(--accent-dim); }

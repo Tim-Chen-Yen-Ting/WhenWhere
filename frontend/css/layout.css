@@ -1,0 +1,132 @@
+/* frontend/css/layout.css
+   Overall page structure: full-bleed map with a right-side panel overlay.
+   Component-specific styling lives in css/map.css, css/clock.css, etc. */
+
+html, body { height: 100%; overflow: hidden; }
+
+/* Any component setting `display` on an element that can also carry the
+   `hidden` attribute (e.g. #range-window, #grid-root, #search-results) would
+   otherwise out-specificity the browser's default `[hidden]{display:none}`
+   UA rule with its own ID/class selector. Reassert it globally. */
+[hidden] { display: none !important; }
+
+#app {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+}
+
+#map-root {
+  position: absolute;
+  inset: 0;
+  z-index: 0; /* contain Leaflet's internally z-indexed panes so they can't
+                 paint above #panel -- position:absolute alone does not
+                 establish a stacking context without an explicit z-index */
+}
+
+#panel {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 92vw;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+
+#panel-header h1 {
+  font-size: 18px;
+  margin: 0 0 var(--space-3);
+  letter-spacing: 0.02em;
+}
+
+#mode-toggle {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.mode-btn {
+  flex: 1;
+}
+.mode-btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--glow-accent);
+}
+
+#format-toggle {
+  flex: 0 0 auto;
+}
+
+#range-window {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--bg-raised);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+}
+#range-window .range-sep {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+#working-cities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+#empty-hint {
+  color: var(--text-faint);
+  font-size: 13px;
+  text-align: center;
+  margin-top: var(--space-4);
+}
+#empty-hint.is-hidden { display: none; }
+
+.city-row {
+  background: var(--bg-raised);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+}
+
+.city-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.city-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.city-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  padding: var(--space-1) var(--space-2);
+}
+.city-remove:hover { color: var(--bad); border-color: transparent; }
+
+.city-clock-mount {
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  #panel { width: 100vw; }
+}
