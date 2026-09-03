@@ -37,8 +37,8 @@ idle can take 30–50s to spin up)
 ## Run Locally
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn backend.app:app --reload
 ```
