@@ -52,8 +52,12 @@ Run the backend test suite with `pytest` (from the repo root, with the venv acti
 ## API
 
 The frontend does almost all of its own timezone math client-side and only needs the
-endpoints below. A legacy `POST /compute` endpoint (single/pair/range conversion via a
-JSON body) still exists for compatibility but isn't used by the current UI.
+endpoints below. A legacy `POST /compute` endpoint still exists — useful for testing
+backend logic directly without a browser — but isn't used by the current UI. It handles
+single-city and pair-at-a-point conversion, plus N-city (including pairs) same-local-window
+overlap for any request that includes an end time; there's no separate "translate this
+exact window into another city's time" mode since that's just two point conversions with
+no logic of its own.
 
 ### GET /city_data
 Full per-city records (`city`, `timezone`, `lat`, `lon`) for every official and

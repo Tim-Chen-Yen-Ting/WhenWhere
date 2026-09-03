@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from backend.logic.scheduler import (
     resolve_city, CITY_TZ, all_city_records, register_user_city, parse_local,
-    convert_all, convert_one, convert_range, overlap_same_local
+    convert_all, convert_one, overlap_same_local
 )
 
 app = FastAPI(title="WhenWhere API")
@@ -72,16 +72,15 @@ def compute(req: ComputeRequest):
     if len(cities) == 2 and not has_end:
         return convert_one(cities[0], cities[1], start_dt)
 
-    if len(cities) == 2 and has_end:
-        end_date_str = req.end_date or req.date          # <-- respect end_date if set
-        end_dt = parse_local(cities[0], end_date_str, req.end_hour, req.end_minute)
-        return convert_range(cities[0], cities[1], start_dt, end_dt)
-
     if len(cities) >= 2 and not has_end:
         return convert_all(cities[0], start_dt)
 
     if len(cities) >= 2 and has_end:
-        end_date_str = req.end_date or req.date          # <-- NEW
+        # A same-local-window "range" request always means N-city overlap now
+        # (see convert_range's removal) -- overlap_same_local already
+        # generalizes correctly to N=2, so a 2-city range is just this with
+        # cities of length 2, not a special case.
+        end_date_str = req.end_date or req.date
         end_dt = parse_local(cities[0], end_date_str, req.end_hour, req.end_minute)
         return overlap_same_local(cities, start_dt, end_dt, step_minutes=req.step_minutes)
 

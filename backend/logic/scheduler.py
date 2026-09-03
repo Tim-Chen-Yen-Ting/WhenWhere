@@ -215,31 +215,6 @@ def convert_one(origin_city: str, target_city: str, origin_dt: datetime) -> Dict
         ]
     }
 
-def convert_range(origin_city: str, target_city: str, start_dt: datetime, end_dt: datetime) -> Dict[str, Any]:
-    """A: [start–end] ⇒ B: [start–end] (equation range)."""
-    if end_dt < start_dt:
-        end_dt = end_dt + timedelta(days=1)
-
-    utc_s = start_dt.astimezone(pytz.UTC)
-    utc_e = end_dt.astimezone(pytz.UTC)
-
-    tz = CITY_TZ[resolve_city(target_city)]
-    b_s = utc_s.astimezone(tz)
-    b_e = utc_e.astimezone(tz)
-
-    return {
-        "type": "PAIR_RANGE",
-        "equation": [
-            {"city": resolve_city(origin_city),
-             "start": to_equation_label(start_dt), "end": to_equation_label(end_dt)},
-            {"city": resolve_city(target_city),
-             "start": to_equation_label(b_s), "end": to_equation_label(b_e),
-             "utcOffsetStart": utc_offset_label(b_s),
-             "utcOffsetEnd":   utc_offset_label(b_e),
-             "startDayShift":  day_shift(start_dt, b_s),
-             "endDayShift":    day_shift(end_dt, b_e)}
-        ]
-    }
 
 # Same-local-window overlap (e.g., everyone wants 08:00–20:00 local)
 def overlap_same_local(cities: List[str], start_dt_local: datetime, end_dt_local: datetime, step_minutes: int = 30) -> Dict[str, Any]:
